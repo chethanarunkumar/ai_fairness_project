@@ -1,16 +1,4 @@
 # AI for Detecting Model Bias & Fairness Auditing
-**Project Batch No: 56 | Dept. of CSE, MSRUAS, Bengaluru**
-
-## Team
-| Name | USN |
-|------|-----|
-| Chandu A | 22ETIS411001 |
-| Chethan B A | 22ETIS411301 |
-| Manju V Gowda | 22ETIS411302 |
-| Sudeep Kumar S N | 22ETCS002106 |
-
-**Mentor:** Praneetha G N, Asst. Professor, Dept. of CSE
-
 ---
 
 ## Project Structure
