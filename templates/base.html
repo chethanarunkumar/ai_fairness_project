@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AI Fairness Auditing{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="brand-icon">⚖</span>
+    <span>AI Fairness Auditing</span>
+  </div>
+  <button class="nav-toggle" id="navToggle">☰</button>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="/" class="{% if request.path=='/' %}active{% endif %}">Home</a></li>
+    <li class="dropdown">
+      
+    <li><a href="/dashboard" class="btn-nav">🔍 Live Demo</a></li>
+  </ul>
+</nav>
+
+<!-- PAGE CONTENT -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <h4>AI Fairness Auditing</h4>
+      <p>Department of Computer Science & Engineering<br>
+         Ramaiah University of Applied Sciences, Bengaluru</p>
+    </div>
+    <div class="footer-col">
+      <h4>Team</h4>
+      <p>Chethan B A · Chandu A <br>Manju V Gowda · Sudeep Kumar S N</p>
+    </div>
+    
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

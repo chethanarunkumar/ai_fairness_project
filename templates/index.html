@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Home — AI Fairness Auditing{% endblock %}
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+  <h1>AI for Detecting <span>Model Bias</span><br>&amp; Fairness Auditing</h1>
+  <p>An intelligent system that detects bias, measures fairness, and provides
+     transparent, explainable results across critical AI applications.</p>
+  <div class="hero-btns">
+    <a href="/dashboard" class="btn-primary">🔍 Try Live Demo</a>
+    
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num">6</div><div class="stat-label">Datasets Supported</div></div>
+  <div class="stat-item"><div class="stat-num">5+</div><div class="stat-label">Fairness Metrics</div></div>
+  <div class="stat-item"><div class="stat-num">4</div><div class="stat-label">Bias Mitigation Methods</div></div>
+  <div class="stat-item"><div class="stat-num">2</div><div class="stat-label">XAI Techniques (SHAP/LIME)</div></div>
+
+</div>
+
+<!-- ABOUT THE PROJECT -->
+<section style="background:var(--white);">
+  <div class="section-center">
+    <div class="section-header">
+      <span class="section-tag">About the Project</span>
+      <h2>What is Fairness Auditing?</h2>
+      <p>Understanding why unbiased AI matters in today's world.</p>
+      <div class="accent-line"></div>
+    </div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">⚠️</div>
+        <h3>The Problem</h3>
+        <p>AI systems used in hiring, lending, and healthcare can perpetuate biases from training data — leading to discriminatory outcomes against protected groups.</p>
+      </div>
+      <div class="card card-navy">
+        <div class="card-icon">🔍</div>
+        <h3>Our Approach</h3>
+        <p>We build an end-to-end auditing pipeline that automatically detects bias, computes fairness metrics, mitigates disparities, and explains model decisions.</p>
+      </div>
+      <div class="card card-mint">
+        <div class="card-icon">📊</div>
+        <h3>The Result</h3>
+        <p>A transparent fairness dashboard with statistical metrics, SHAP feature importance, group-level analysis, and downloadable audit reports.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES OVERVIEW -->
+<section>
+  <div class="section-center">
+    <div class="section-header">
+      <span class="section-tag">Methodology</span>
+      <h2>6-Module Pipeline</h2>
+      <p>Every step from raw data to explainable fairness report.</p>
+      <div class="accent-line"></div>
+    </div>
+    <div class="cards-grid">
+      {% set modules = [
+        ("1","📂","Data Preparation","Collect and clean datasets; handle missing values and encode categorical variables."),
+        ("2","🤖","Build Model","Train a machine learning classifier."),
+        ("3","🔎","Check Bias","Detect sensitive features; measure demographic parity and equalized odds."),
+        ("4","⚙️","Reduce Bias","Apply pre/in/post-processing mitigation techniques to reduce disparities."),
+        ("5","💡","Explain Results","Use SHAP and LIME to attribute feature importance and explain predictions."),
+        ("6","📈","Show Output","Display results on an interactive fairness dashboard with downloadable reports.")
+      ] %}
+      {% for num,icon,title,desc in modules %}
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem;">
+          <span style="background:var(--navy);color:var(--white);width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;">{{num}}</span>
+          <span style="font-size:1.6rem;">{{icon}}</span>
+        </div>
+        <h3>{{title}}</h3>
+        <p>{{desc}}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+    </div>
+  </div>
+</section>
+
+{% endblock %}

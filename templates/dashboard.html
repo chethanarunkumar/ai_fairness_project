@@ -1,0 +1,1472 @@
+{% extends "base.html" %}
+{% block title %}Live Demo — AI Fairness Auditing{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── page hero ─────────────────────────────────── */
+.dash-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, #0e3460 100%);
+  color:#fff; padding:2.2rem 2.5rem 1.8rem;
+}
+.dash-hero .breadcrumb { font-size:.82rem; color:rgba(255,255,255,.55); margin-bottom:.5rem; }
+.dash-hero .breadcrumb a { color:var(--mint); text-decoration:none; }
+.dash-hero h1 { font-size:1.9rem; font-weight:800; margin-bottom:.4rem; }
+.dash-hero p  { font-size:.92rem; color:rgba(255,255,255,.7); max-width:700px; }
+
+/* ── layout ────────────────────────────────────── */
+.dash-wrap { max-width:1320px; margin:0 auto; padding:2rem 2rem 4rem; }
+
+/* ── section heading ───────────────────────────── */
+.sec-head {
+  display:flex; align-items:center; gap:.7rem;
+  font-size:.7rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.18em; color:var(--mid); margin-bottom:1rem; margin-top:2rem;
+}
+.sec-head::after { content:''; flex:1; height:1px; background:var(--silver); }
+.sec-num {
+  background:var(--navy); color:#fff; border-radius:50%;
+  width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+  font-size:.65rem; font-weight:800; flex-shrink:0;
+}
+
+/* ── source tabs ───────────────────────────────── */
+.src-tabs { display:flex; gap:.5rem; margin-bottom:1.5rem; border-bottom:2px solid var(--silver); padding-bottom:.5rem; }
+.src-tab {
+  padding:.48rem 1.3rem; border-radius:6px 6px 0 0; cursor:pointer;
+  font-size:.82rem; font-weight:700; border:1px solid transparent;
+  background:transparent; color:var(--mid); transition:all .2s;
+}
+.src-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.src-tab:not(.active):hover { background:var(--silver); color:var(--navy); }
+
+/* ── config grid ───────────────────────────────── */
+.cfg-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.cfg-card {
+  background:#fff; border:1px solid var(--silver);
+  border-radius:10px; padding:1.3rem 1.4rem;
+  box-shadow:0 2px 8px rgba(0,0,0,.05); transition:box-shadow .2s;
+}
+.cfg-card:hover { box-shadow:0 4px 16px rgba(26,42,74,.1); }
+.cfg-card.hl { border-color:var(--teal); border-width:2px; }
+.cfg-card label {
+  display:block; font-size:.62rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.2em; color:var(--mid); margin-bottom:.6rem;
+}
+.cfg-card select,
+.cfg-card input[type=text] {
+  width:100%; border:none; outline:none; background:transparent;
+  font-size:.95rem; color:var(--black); font-family:inherit; cursor:pointer;
+  border-bottom:1.5px solid var(--silver); padding-bottom:.3rem;
+  transition:border-color .2s;
+}
+.cfg-card select:focus { border-color:var(--teal); }
+.cfg-card input[readonly] { cursor:default; color:var(--mid); }
+.cfg-card .loading-cols { color:var(--teal); font-size:.8rem; font-style:italic; }
+
+/* ── model pills ───────────────────────────────── */
+.model-pills { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.model-pill {
+  padding:.42rem 1.1rem; border-radius:20px; cursor:pointer;
+  font-size:.8rem; font-weight:600; border:2px solid var(--silver);
+  background:#fff; color:var(--mid); transition:all .2s;
+}
+.model-pill.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.model-pill:not(.active):hover { border-color:var(--teal); color:var(--teal); }
+
+/* ── upload card ───────────────────────────────── */
+#uploadZone { display:none; }
+.upload-card {
+  background:#fff; border:2px dashed #c8d8f0; border-radius:12px;
+  padding:2.8rem 2rem; text-align:center; cursor:pointer;
+  transition:all .2s; margin-bottom:1.2rem;
+}
+.upload-card:hover, .upload-card.drag-over { border-color:var(--teal); background:#f0faf8; }
+.up-icon { font-size:3rem; margin-bottom:.8rem; }
+.upload-card h3 { font-size:1.1rem; font-weight:700; color:var(--navy); margin-bottom:.35rem; }
+.upload-card p  { font-size:.85rem; color:var(--mid); line-height:1.6; margin-bottom:.9rem; }
+.upload-card em { color:var(--teal); font-style:normal; font-weight:600; }
+.browse-btn {
+  background:var(--navy); color:#fff; border:none;
+  padding:.48rem 1.3rem; border-radius:6px; cursor:pointer;
+  font-size:.82rem; font-weight:700; transition:background .2s;
+}
+.browse-btn:hover { background:var(--teal); }
+.sample-row { display:flex; gap:.5rem; justify-content:center; margin-top:1rem; flex-wrap:wrap; align-items:center; }
+.sample-lbl { font-size:.77rem; color:var(--mid); font-weight:600; }
+.sample-chip {
+  border:1px solid var(--silver); color:var(--slate); padding:.25rem .75rem;
+  border-radius:20px; font-size:.77rem; cursor:pointer; transition:all .2s;
+}
+.sample-chip:hover { border-color:var(--teal); color:var(--teal); }
+#fileInput { display:none; }
+
+/* file status banner */
+.file-banner {
+  display:none; align-items:center; gap:.6rem;
+  background:#f0fdf4; border:1px solid #86efac; border-radius:8px;
+  padding:.7rem 1rem; margin-bottom:1rem; font-size:.85rem; color:#166534;
+}
+.file-banner.err { background:#fef2f2; border-color:#fca5a5; color:#7f1d1d; }
+
+/* ── action row ────────────────────────────────── */
+.action-row { display:flex; gap:.7rem; margin:1.5rem 0; flex-wrap:wrap; }
+.btn-primary {
+  background:var(--teal); color:#fff; border:none;
+  padding:.72rem 2rem; border-radius:7px; cursor:pointer;
+  font-size:.88rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
+  transition:all .2s; box-shadow:0 3px 10px rgba(2,128,144,.3);
+}
+.btn-primary:hover:not(:disabled) { background:var(--navy); transform:translateY(-1px); }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-outline {
+  background:#fff; color:var(--slate); border:1.5px solid var(--silver);
+  padding:.72rem 1.3rem; border-radius:7px; cursor:pointer;
+  font-size:.85rem; font-weight:600; display:flex; align-items:center; gap:.5rem;
+  transition:all .2s;
+}
+.btn-outline:hover { border-color:var(--teal); color:var(--teal); background:#f0faf8; }
+
+/* ── loader ─────────────────────────────────────── */
+#dash-loading { display:none; padding:1.5rem 0; }
+.loader-track { width:260px; height:4px; background:var(--silver); border-radius:2px; overflow:hidden; margin-bottom:.5rem; }
+.loader-fill  { height:100%; background:var(--teal); animation:loadprog 1.1s ease-in-out infinite; }
+@keyframes loadprog {
+  0%{width:0%;margin-left:0%} 50%{width:55%;margin-left:22%} 100%{width:0%;margin-left:100%}
+}
+.loader-txt { font-size:.82rem; color:var(--mid); font-weight:600; }
+
+/* ── results ─────────────────────────────────────── */
+#dash-results { display:none; }
+
+/* ── summary bar ───────────────────────────────── */
+.sum-bar {
+  background:var(--navy); color:#fff; border-radius:10px;
+  padding:1rem 1.6rem; display:flex; align-items:center;
+  gap:2rem; flex-wrap:wrap; margin-bottom:1rem;
+  box-shadow:0 4px 18px rgba(26,42,74,.2);
+}
+.sum-item label { display:block; font-size:.58rem; color:rgba(255,255,255,.5); letter-spacing:.18em; text-transform:uppercase; margin-bottom:.2rem; }
+.sum-item span  { font-size:.92rem; font-weight:700; }
+.sum-item .acc  { color:var(--mint); }
+.sum-verdict {
+  margin-left:auto; font-size:.8rem; font-weight:800;
+  padding:.4rem 1.1rem; border-radius:20px; letter-spacing:.06em;
+}
+.sv-fair     { background:rgba(2,195,154,.18); color:#065f46; border:1.5px solid var(--mint); }
+.sv-moderate { background:rgba(245,166,35,.18); color:#92400e; border:1.5px solid #f5a623; }
+.sv-bias     { background:rgba(239,68,68,.18);  color:#7f1d1d; border:1.5px solid #ef4444; }
+
+/* ── model compare cards ───────────────────────── */
+.mc-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1rem; }
+.mc-card {
+  background:#fff; border:1.5px solid var(--silver); border-radius:10px;
+  padding:1.1rem; transition:all .2s; position:relative; overflow:hidden;
+}
+.mc-card.active { border-color:var(--teal); border-width:2px; box-shadow:0 4px 14px rgba(2,128,144,.15); }
+.mc-card.active::before {
+  content:'SELECTED'; position:absolute; top:0; right:0;
+  background:var(--teal); color:#fff; font-size:.55rem; font-weight:800;
+  padding:.2rem .5rem; letter-spacing:.1em; border-bottom-left-radius:6px;
+}
+.mc-card h4 { font-size:.82rem; font-weight:800; color:var(--navy); margin-bottom:.8rem; }
+.mc-row { display:flex; justify-content:space-between; font-size:.78rem; margin-bottom:.28rem; }
+.mc-lbl { color:var(--mid); }
+.mc-val { font-weight:700; color:var(--black); }
+.mc-val.good { color:#059669; } .mc-val.ok { color:#d97706; } .mc-val.bad { color:#dc2626; }
+.mc-bar-wrap { margin-top:.55rem; height:5px; background:var(--silver); border-radius:3px; overflow:hidden; }
+.mc-bar-fill { height:100%; background:var(--teal); border-radius:3px; transition:width .7s ease; }
+.mc-btn {
+  width:100%; margin-top:.7rem; padding:.38rem; border-radius:5px;
+  border:1.5px solid var(--silver); background:transparent; cursor:pointer;
+  font-size:.75rem; font-weight:700; color:var(--mid); transition:all .2s;
+}
+.mc-btn:hover { border-color:var(--teal); color:var(--teal); }
+.mc-card.active .mc-btn { background:var(--teal); color:#fff; border-color:var(--teal); }
+
+/* ── metric tiles ──────────────────────────────── */
+.metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1rem; }
+.m-tile {
+  background:#fff; border:1px solid var(--silver); border-radius:10px;
+  padding:1.2rem 1.3rem; border-top:3px solid transparent;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.m-tile.t-good { border-top-color:#10b981; }
+.m-tile.t-warn { border-top-color:#f59e0b; }
+.m-tile.t-bad  { border-top-color:#ef4444; }
+.m-tile.t-blue { border-top-color:var(--teal); }
+.m-top  { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.7rem; }
+.m-name { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.15em; color:var(--mid); }
+.m-badge { font-size:.6rem; font-weight:800; padding:.2rem .5rem; border-radius:4px; letter-spacing:.08em; }
+.m-badge.good { background:#dcfce7; color:#065f46; }
+.m-badge.warn { background:#fef3c7; color:#92400e; }
+.m-badge.bad  { background:#fee2e2; color:#7f1d1d; }
+.m-badge.blue { background:#dbeafe; color:#1e40af; }
+.m-val { font-size:2.2rem; font-weight:800; line-height:1; }
+.t-good .m-val { color:#059669; } .t-warn .m-val { color:#d97706; }
+.t-bad  .m-val { color:#dc2626; } .t-blue .m-val { color:var(--teal); }
+.m-thresh { font-size:.62rem; color:var(--mid); margin-top:.4rem; }
+
+/* ── white card containers ─────────────────────── */
+.wcard {
+  background:#fff; border:1px solid var(--silver); border-radius:10px;
+  padding:1.4rem; box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.wcard h4 {
+  font-size:.67rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.18em; color:var(--mid); margin-bottom:1rem;
+  display:flex; align-items:center; gap:.5rem;
+}
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+canvas { max-height:230px; }
+
+/* ── tables ────────────────────────────────────── */
+.data-table { width:100%; border-collapse:collapse; font-size:.84rem; }
+.data-table th {
+  background:var(--offwhite); font-size:.62rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.12em; color:var(--mid);
+  padding:.55rem .8rem; border:1px solid var(--silver); text-align:left;
+}
+.data-table td { padding:.6rem .8rem; border:1px solid #f0f4f8; color:var(--slate); }
+.data-table td:first-child { font-weight:700; color:var(--navy); }
+.data-table tr:nth-child(even) td { background:#fafbfc; }
+.improved { color:#059669 !important; font-weight:800; }
+.worsened { color:#dc2626 !important; font-weight:800; }
+
+/* ── feature bars ──────────────────────────────── */
+.feat-row { display:flex; align-items:center; gap:.8rem; margin-bottom:.55rem; }
+.feat-nm  { min-width:115px; font-size:.8rem; font-weight:600; color:var(--slate); }
+.feat-tr  { flex:1; height:8px; background:var(--silver); border-radius:4px; overflow:hidden; }
+.feat-bar { height:100%; background:linear-gradient(90deg,var(--teal),var(--mint)); border-radius:4px; transition:width .7s ease; }
+.feat-pc  { font-size:.74rem; font-weight:700; color:var(--mid); min-width:40px; text-align:right; }
+
+/* ── report card ───────────────────────────────── */
+.report-card {
+  background:#fff; border:1px solid var(--silver); border-radius:10px;
+  padding:1.6rem; box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.report-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; flex-wrap:wrap; gap:.8rem; }
+.report-head-l { display:flex; align-items:center; gap:.7rem; }
+.report-head h3 { font-size:1.05rem; font-weight:800; color:var(--navy); }
+.ai-badge {
+  background:linear-gradient(135deg,var(--teal),var(--mint)); color:#fff;
+  padding:.2rem .6rem; border-radius:4px; font-size:.65rem; font-weight:800; letter-spacing:.06em;
+}
+.btn-gen {
+  background:var(--teal); color:#fff; border:none;
+  padding:.5rem 1.3rem; border-radius:6px; cursor:pointer;
+  font-size:.8rem; font-weight:700; transition:background .2s;
+}
+.btn-gen:hover { background:var(--navy); }
+.btn-pdf {
+  background:transparent; color:var(--mid); border:1.5px solid var(--silver);
+  padding:.5rem 1rem; border-radius:6px; cursor:pointer;
+  font-size:.78rem; font-weight:600; transition:all .2s; display:flex; align-items:center; gap:.4rem;
+}
+.btn-pdf:hover { border-color:var(--teal); color:var(--teal); background:#f0faf8; }
+.report-body {
+  background:var(--offwhite); border:1px solid var(--silver); border-radius:8px;
+  padding:2rem; min-height:155px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+}
+.report-body.filled { align-items:flex-start; text-align:left; }
+.rep-icon { font-size:2.4rem; margin-bottom:.8rem; }
+.rep-hint { color:var(--mid); font-size:.88rem; margin-bottom:.3rem; }
+.rep-hint strong { color:var(--navy); }
+.rep-sub  { font-size:.8rem; color:#aab; }
+.rep-content { color:var(--slate); font-size:.9rem; line-height:1.9; width:100%; }
+.rep-content strong { color:var(--navy); }
+
+/* ── spinner overlay for pdf export ───────────── */
+.spin-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+  z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:.8rem;
+}
+.spin-overlay.show { display:flex; }
+.spinner {
+  width:42px; height:42px; border:4px solid rgba(255,255,255,.3);
+  border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite;
+}
+.spin-txt { color:#fff; font-size:.9rem; font-weight:600; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── responsive ────────────────────────────────── */
+@media(max-width:960px){
+  .cfg-grid,.mc-grid,.metric-row,.two-col { grid-template-columns:1fr 1fr; }
+}
+@media(max-width:580px){
+  .cfg-grid,.mc-grid,.metric-row,.two-col { grid-template-columns:1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- PDF spinner overlay -->
+<div class="spin-overlay" id="pdfSpinner">
+  <div class="spinner"></div>
+  <div class="spin-txt">Generating PDF report…</div>
+</div>
+
+<!-- Hero -->
+<div class="dash-hero">
+  <div class="breadcrumb"><a href="/">Home</a> / Live Demo</div>
+  <h1>🔍 Fairness Auditing Dashboard</h1>
+  <p>Run real ML bias audits across demo datasets with 4 models — or upload your own CSV. Compare fairness metrics, visualise disparities, apply mitigation, and export a professional PDF report.</p>
+</div>
+
+<div class="dash-wrap">
+
+  <!-- ── 00 DATA SOURCE ─────────── -->
+  <div class="sec-head"><span class="sec-num">00</span> Data Source</div>
+  <div class="src-tabs">
+    <button class="src-tab active" id="tabDemo"   onclick="switchSrc('demo')">📊 Demo Dataset</button>
+    <button class="src-tab"        id="tabUpload" onclick="switchSrc('upload')">📁 Upload CSV</button>
+  </div>
+
+  <!-- DEMO ZONE -->
+  <div id="demoZone">
+    <div class="sec-head"><span class="sec-num">01</span> Audit Configuration</div>
+    <div class="cfg-grid">
+
+      <div class="cfg-card hl">
+        <label>Model Domain / Dataset</label>
+        <select id="dsSel" onchange="loadDemoInfo()">
+          <option value="Adult Income">Hiring &amp; Recruitment — Adult Income (32,561 rows)</option>
+          <option value="COMPAS">Criminal Justice — COMPAS</option>
+          <option value="German Credit">Financial Lending — German Credit</option>
+          <option value="Heart Disease">Healthcare — Heart Disease</option>
+          <option value="Student Performance">Education — Student Performance</option>
+          <option value="Bank Marketing">Banking — Bank Marketing</option>
+        </select>
+      </div>
+
+      <div class="cfg-card">
+        <label>Protected Attribute <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.7rem;">(all columns from dataset)</span></label>
+        <select id="attrSel"><option>Loading…</option></select>
+      </div>
+
+      <div class="cfg-card">
+        <label>Fairness Criterion &amp; Mitigation</label>
+        <select id="critSel">
+          <option value="reweighing">Demographic Parity (Reweighing)</option>
+          <option value="adversarial">Equalized Odds (Adversarial)</option>
+          <option value="threshold">Calibration (Threshold)</option>
+        </select>
+      </div>
+
+      <div class="cfg-card">
+        <label>Dataset Sample Size <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.7rem;">(actual rows)</span></label>
+        <input type="text" id="sizeDisp" value="Loading…" readonly />
+      </div>
+
+    </div>
+
+    <!-- Model selector -->
+    <div class="sec-head" style="margin-top:1.4rem;"><span class="sec-num">02</span> Select ML Model</div>
+    <div class="model-pills" id="demoPills">
+      <button class="model-pill active" onclick="pickModel(this,'XGBoost')">XGBoost</button>
+      <button class="model-pill" onclick="pickModel(this,'Neural Network')">Neural Network</button>
+      <button class="model-pill" onclick="pickModel(this,'SVM')">SVM</button>
+      <button class="model-pill" onclick="pickModel(this,'Naive Bayes')">Naive Bayes</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD ZONE -->
+  <div id="uploadZone">
+
+    <!-- Drop area -->
+    <div class="upload-card" id="dropArea"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="onDrop(event)">
+      <div class="up-icon">📁</div>
+      <h3>Drop your CSV file here</h3>
+      <p>Accepts <em>.csv</em> or <em>.tsv</em> files up to 50 MB.<br>
+         Needs at least one <em>demographic column</em> and one <em>outcome/prediction column</em>.</p>
+      <button class="browse-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">BROWSE FILES</button>
+      <div class="sample-row">
+        <span class="sample-lbl">Try sample:</span>
+        <span class="sample-chip" onclick="event.stopPropagation();useSample('Adult Income')">Hiring Dataset</span>
+        <span class="sample-chip" onclick="event.stopPropagation();useSample('German Credit')">Lending Dataset</span>
+        <span class="sample-chip" onclick="event.stopPropagation();useSample('COMPAS')">Justice Dataset</span>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.tsv" onchange="onFilePick(this)" />
+
+    <!-- File status -->
+    <div class="file-banner" id="fileBanner">
+      <span id="fileBannerIcon">✅</span>
+      <span id="fileBannerTxt">File loaded.</span>
+    </div>
+
+    <!-- Config cards — same screenshot style, auto-populated from file -->
+    <div class="sec-head" style="margin-top:1.4rem;"><span class="sec-num">01</span> Audit Configuration</div>
+    <div class="cfg-grid">
+
+      <div class="cfg-card hl">
+        <label>Model Domain</label>
+        <input type="text" id="upDomain" value="Custom Uploaded Dataset" readonly />
+      </div>
+
+      <div class="cfg-card">
+        <label>Protected Attribute <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.7rem;">(auto-detected from your file)</span></label>
+        <select id="upAttrSel"><option value="">— Upload file first —</option></select>
+      </div>
+
+      <div class="cfg-card">
+        <label>Outcome / Label Column <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.7rem;">(what to predict)</span></label>
+        <select id="upLabelSel"><option value="">— Upload file first —</option></select>
+      </div>
+
+      <div class="cfg-card">
+        <label>Dataset Sample Size <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:.7rem;">(actual rows)</span></label>
+        <input type="text" id="upSizeDisp" value="— Upload file —" readonly />
+      </div>
+
+    </div>
+
+    <div class="cfg-grid" style="margin-top:1rem;">
+      <div class="cfg-card">
+        <label>Fairness Criterion &amp; Mitigation</label>
+        <select id="upCritSel">
+          <option value="reweighing">Demographic Parity (Reweighing)</option>
+          <option value="adversarial">Equalized Odds (Adversarial)</option>
+          <option value="threshold">Calibration (Threshold)</option>
+        </select>
+      </div>
+      <div class="cfg-card" style="background:var(--offwhite);">
+        <label>Detected Columns</label>
+        <div id="upColPreview" style="font-size:.8rem;color:var(--mid);padding-top:.2rem;">Upload a file to see columns…</div>
+      </div>
+    </div>
+
+    <!-- Model selector for upload -->
+    <div class="sec-head" style="margin-top:1.4rem;"><span class="sec-num">02</span> Select ML Model</div>
+    <div class="model-pills" id="uploadPills">
+      <button class="model-pill active" onclick="pickModelUp(this,'XGBoost')">XGBoost</button>
+      <button class="model-pill" onclick="pickModelUp(this,'Neural Network')">Neural Network</button>
+      <button class="model-pill" onclick="pickModelUp(this,'SVM')">SVM</button>
+      <button class="model-pill" onclick="pickModelUp(this,'Naive Bayes')">Naive Bayes</button>
+    </div>
+
+  </div><!-- /uploadZone -->
+
+  <!-- ACTION BUTTONS -->
+  <div class="action-row">
+    <button class="btn-primary" id="runBtn" onclick="doAudit()">▶ Run Audit</button>
+    <button class="btn-outline" id="exportBtn" onclick="doExportPDF()" style="display:none;">
+      📄 Export PDF Report
+    </button>
+    <button class="btn-outline" onclick="doReset()">↺ Reset</button>
+  </div>
+
+  <!-- LOADER -->
+  <div id="dash-loading">
+    <div class="loader-track"><div class="loader-fill"></div></div>
+    <div class="loader-txt" id="loaderTxt">Running audit — training 4 models, computing fairness metrics…</div>
+  </div>
+
+  <!-- ══════════ RESULTS ══════════ -->
+  <div id="dash-results">
+
+    <!-- Summary bar -->
+    <div class="sum-bar">
+      <div class="sum-item"><label>Dataset</label><span id="rDs">—</span></div>
+      <div class="sum-item"><label>Protected Attribute</label><span id="rAttr">—</span></div>
+      <div class="sum-item"><label>Active Model</label><span id="rModel">—</span></div>
+      <div class="sum-item"><label>Samples / Test</label><span id="rSamples">—</span></div>
+      <div class="sum-item"><label>AUC-ROC</label><span class="acc" id="rAUC">—</span></div>
+      <div id="rVerdict" class="sum-verdict sv-fair">✓ FAIR</div>
+    </div>
+
+    <!-- 03 Model comparison -->
+    <div class="sec-head"><span class="sec-num">03</span> All 4 Models — Accuracy & Fairness</div>
+    <div class="mc-grid" id="mcGrid"></div>
+
+    <!-- 04 Fairness metrics -->
+    <div class="sec-head"><span class="sec-num">04</span> Fairness Metrics</div>
+    <div class="metric-row">
+      <div class="m-tile" id="tDI">
+        <div class="m-top"><span class="m-name">Disparate Impact</span><span class="m-badge" id="bDI">—</span></div>
+        <div class="m-val" id="vDI">—</div>
+        <div class="m-thresh">Threshold ≥ 0.80 (closer to 1 = fairer)</div>
+      </div>
+      <div class="m-tile" id="tEO">
+        <div class="m-top"><span class="m-name">Equal Opportunity</span><span class="m-badge" id="bEO">—</span></div>
+        <div class="m-val" id="vEO">—</div>
+        <div class="m-thresh">Threshold ≥ 0.80 (1 − |EO diff|)</div>
+      </div>
+      <div class="m-tile" id="tPP">
+        <div class="m-top"><span class="m-name">Predictive Parity</span><span class="m-badge" id="bPP">—</span></div>
+        <div class="m-val" id="vPP">—</div>
+        <div class="m-thresh">Threshold ≥ 0.80</div>
+      </div>
+      <div class="m-tile" id="tAC">
+        <div class="m-top"><span class="m-name">Model Accuracy</span><span class="m-badge" id="bAC">—</span></div>
+        <div class="m-val" id="vAC">—</div>
+        <div class="m-thresh">Threshold ≥ 0.75</div>
+      </div>
+    </div>
+
+    <!-- 05 Group breakdown -->
+    <div class="sec-head"><span class="sec-num">05</span> Group Breakdown</div>
+    <div class="wcard" style="margin-bottom:1rem;">
+      <table class="data-table">
+        <thead><tr><th>Group</th><th>Accuracy</th><th>Positive Rate</th><th>TPR</th><th>FPR</th><th>FNR</th></tr></thead>
+        <tbody id="grpBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 06 Charts -->
+
+    <div class="two-col" style="margin-bottom:1rem;">
+      <div class="wcard"><h4>📈 Model Accuracy — All 4 Models</h4><canvas id="cModels"></canvas></div>
+      <div class="wcard"><h4>🎯 Fairness Score — All 4 Models</h4><canvas id="cFairness"></canvas></div>
+    </div>
+
+   
+
+
+    <!-- 06 Mitigation -->
+    <div class="sec-head"><span class="sec-num">06</span> Bias Mitigation Results</div>
+    <div class="two-col" style="margin-bottom:1rem;">
+      <div class="wcard"><h4>🛡️ Before vs After Mitigation</h4><canvas id="cMit"></canvas></div>
+      <div class="wcard">
+        <h4>📋 Detailed Comparison</h4>
+        <table class="data-table">
+          <thead><tr><th>Metric</th><th>Before</th><th>After</th><th>Δ Change</th></tr></thead>
+          <tbody id="mitBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 07 EXPLAINABLE AI -->
+    <div class="sec-head"><span class="sec-num">07</span> Explainable AI</div>
+    <div id="xaiSection" style="display:none;">
+
+
+
+      <!-- XAI ROW 2a: Real SHAP -->
+      <div class="wcard" style="margin-bottom:1rem;">
+        <h4>🔬 SHAP Values <span style="font-size:.75rem;font-weight:400;color:var(--mid);">(Kernel SHAP — Shapley values, Lundberg &amp; Lee 2017 — global feature importance)</span></h4>
+        <div id="xaiFeatChart" style="margin-top:.8rem;"></div>
+      </div>
+
+      <!-- XAI ROW 2b: Real LIME -->
+      <div class="wcard" style="margin-bottom:1rem;">
+        <h4>🧪 LIME Explanation <span style="font-size:.75rem;font-weight:400;color:var(--mid);">(Local Interpretable Model-agnostic Explanations, Ribeiro et al. 2016 — single prediction)</span></h4>
+        <div id="xaiLimeChart" style="margin-top:.8rem;"></div>
+      </div>
+
+
+
+
+
+      <!-- XAI ROW 5: Plain-English Explanation -->
+      <div class="wcard" style="margin-bottom:1rem;">
+        <h4>📋 Plain-English Decision Explanation</h4>
+        <div id="xaiExplanation" style="margin-top:.8rem;"></div>
+      </div>
+
+
+      <!-- Export PDF still at bottom -->
+      <div style="text-align:right;margin-bottom:1rem;">
+        <button class="btn-pdf" onclick="doExportPDF()">📄 Export Full PDF Report</button>
+      </div>
+
+    </div><!-- /xaiSection -->
+    <div id="xaiPlaceholder" class="report-card" style="text-align:center;padding:2rem;">
+      <div style="font-size:2rem;margin-bottom:.5rem;">🔬</div>
+      <p style="color:var(--mid);font-size:.9rem;">Run an audit to see <strong>Explainable AI</strong> analysis.</p>
+    </div>
+
+  </div><!-- /dash-results -->
+</div><!-- /dash-wrap -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ══════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════ */
+let selectedModel   = 'XGBoost';
+let selectedModelUp = 'XGBoost';
+let uploadedFile    = null;   // actual File object
+let _auditData      = null;   // last audit result (for PDF / report)
+let _staticResultsHTML = ''; // snapshot of results HTML structure
+
+/* ══════════════════════════════════════════════════
+   FIX 1 & 2 — Load real column names + row count
+   ══════════════════════════════════════════════════ */
+function loadDemoInfo() {
+  const ds = document.getElementById('dsSel').value;
+  document.getElementById('attrSel').innerHTML = '<option>Loading…</option>';
+  document.getElementById('sizeDisp').value = 'Loading…';
+
+  fetch('/dataset_info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset: ds })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { console.error(d.error); return; }
+
+    // Populate Protected Attribute with ALL columns
+    const sel = document.getElementById('attrSel');
+    sel.innerHTML = '';
+    d.columns.forEach(col => {
+      if (col !== d.label_col) {
+        const opt = document.createElement('option');
+        opt.value = col; opt.textContent = col;
+        sel.appendChild(opt);
+      }
+    });
+
+    // Smart default: prefer gender/race/age/sex/ethnicity over other cols
+    const preferred = ['gender','race','age','sex','ethnicity','marital'];
+    const bestMatch = d.columns.find(c => preferred.includes(c.toLowerCase()));
+    if (bestMatch && sel.querySelector('option[value="' + bestMatch + '"]')) {
+      sel.value = bestMatch;
+    }
+
+    // Add Full Dataset Scan option at bottom with divider
+    const divider = document.createElement('option');
+    divider.disabled = true; divider.textContent = '─────────────────';
+    sel.appendChild(divider);
+    const scanOpt = document.createElement('option');
+    scanOpt.value = '__full_scan__'; scanOpt.textContent = '🔍 Full Dataset Scan (K-Fold)';
+    sel.appendChild(scanOpt);
+
+    // Show real row count
+    document.getElementById('sizeDisp').value =
+      Number(d.row_count).toLocaleString() + ' records';
+  })
+  .catch(e => console.error('dataset_info error:', e));
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', function() {
+  loadDemoInfo();
+  // Snapshot the static results HTML so we can restore it after full scan
+  _staticResultsHTML = document.getElementById('dash-results').innerHTML;
+});
+
+/* ══════════════════════════════════════════════════
+   FIX 3 & 4 — Upload CSV, auto-detect columns
+   ══════════════════════════════════════════════════ */
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropArea').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) processUploadedFile(f);
+}
+function onFilePick(inp) {
+  if (inp.files[0]) processUploadedFile(inp.files[0]);
+}
+
+function processUploadedFile(file) {
+  uploadedFile = file;
+  showBanner('info', '⏳ Analysing file: ' + file.name + '…');
+
+  // Read first few rows to detect columns
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const sep  = file.name.endsWith('.tsv') ? '\t' : ',';
+    const lines = text.split('\n').filter(l => l.trim());
+    if (lines.length < 2) { showBanner('err', '❌ File has too few rows.'); return; }
+
+    const headers = lines[0].split(sep).map(h => h.trim().replace(/"/g,''));
+    const rowCount = lines.length - 1;  // exclude header
+
+    // Populate Protected Attribute dropdown with ALL columns
+    const attrSel  = document.getElementById('upAttrSel');
+    const labelSel = document.getElementById('upLabelSel');
+    attrSel.innerHTML = ''; labelSel.innerHTML = '';
+    headers.forEach(h => {
+      attrSel.appendChild(new Option(h, h));
+      labelSel.appendChild(new Option(h, h));
+    });
+
+    // Smart defaults: last col = label, first "gender/race/age" = sensitive
+    const sensGuess = headers.find(h => /gender|sex|race|age|ethnicity/i.test(h)) || headers[0];
+    const lblGuess  = headers[headers.length - 1];
+    attrSel.value  = sensGuess;
+    labelSel.value = lblGuess;
+
+    // Update size display
+    document.getElementById('upSizeDisp').value = rowCount.toLocaleString() + ' records';
+    document.getElementById('upDomain').value   = file.name.replace(/\.(csv|tsv)$/i,'');
+
+    // Show column preview
+    document.getElementById('upColPreview').innerHTML =
+      headers.map(h => `<span style="display:inline-block;background:var(--silver);border-radius:3px;padding:.1rem .45rem;margin:.1rem;font-size:.73rem;">${h}</span>`).join('');
+
+    showBanner('ok', '✅ Loaded: ' + file.name + ' — ' + rowCount.toLocaleString() + ' rows, ' + headers.length + ' columns detected');
+
+    // Add Full Dataset Scan to upload protected attribute dropdown
+    const upSel = document.getElementById('upAttrSel');
+    const upDiv = document.createElement('option');
+    upDiv.disabled = true; upDiv.textContent = '─────────────────';
+    upSel.appendChild(upDiv);
+    const upScan = document.createElement('option');
+    upScan.value = '__full_scan__'; upScan.textContent = '🔍 Full Dataset Scan (K-Fold)';
+    upSel.appendChild(upScan);
+  };
+  reader.readAsText(file.slice(0, 80000)); // read first ~80KB for preview
+}
+
+function showBanner(type, msg) {
+  const b = document.getElementById('fileBanner');
+  b.className = 'file-banner' + (type==='err'?' err':'');
+  b.style.display = 'flex';
+  document.getElementById('fileBannerIcon').textContent = type==='err'?'❌':type==='info'?'⏳':'✅';
+  document.getElementById('fileBannerTxt').textContent  = msg.replace(/^[✅⏳❌]\s*/,'');
+}
+
+/* ══════════════════════════════════════════════════
+   MODEL PILL SELECTORS
+   ══════════════════════════════════════════════════ */
+function pickModel(btn, name) {
+  document.querySelectorAll('#demoPills .model-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedModel = name;
+}
+function pickModelUp(btn, name) {
+  document.querySelectorAll('#uploadPills .model-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedModelUp = name;
+}
+
+/* ══════════════════════════════════════════════════
+   SOURCE TOGGLE
+   ══════════════════════════════════════════════════ */
+function switchSrc(src) {
+  document.getElementById('demoZone').style.display   = src==='demo'   ? 'block':'none';
+  document.getElementById('uploadZone').style.display = src==='upload' ? 'block':'none';
+  document.getElementById('tabDemo').classList.toggle('active',   src==='demo');
+  document.getElementById('tabUpload').classList.toggle('active', src==='upload');
+}
+
+function useSample(ds) {
+  switchSrc('demo');
+  document.getElementById('dsSel').value = ds;
+  loadDemoInfo();
+}
+
+/* ══════════════════════════════════════════════════
+   RUN AUDIT — FIX 5 & 6 (upload runs real ML)
+   ══════════════════════════════════════════════════ */
+function doAudit() {
+  const isUpload = document.getElementById('tabUpload').classList.contains('active');
+
+  document.getElementById('dash-loading').style.display = 'block';
+  document.getElementById('dash-results').style.display = 'none';
+  document.getElementById('exportBtn').style.display    = 'none';
+  document.getElementById('runBtn').disabled = true;
+
+  if (isUpload) {
+    if (!uploadedFile) {
+      alert('Please upload a CSV file first.');
+      document.getElementById('dash-loading').style.display = 'none';
+      document.getElementById('runBtn').disabled = false;
+      return;
+    }
+    const sensitive  = document.getElementById('upAttrSel').value;
+    const label_col  = document.getElementById('upLabelSel').value;
+    const mitigation = document.getElementById('upCritSel').value;
+    if (!label_col) {
+      alert('Please select the Label column.');
+      document.getElementById('dash-loading').style.display = 'none';
+      document.getElementById('runBtn').disabled = false;
+      return;
+    }
+
+    // ── Full Dataset Scan (upload) ──
+    if (sensitive === '__full_scan__') {
+      document.getElementById('loaderTxt').textContent =
+        'Running Full Dataset Scan (5-Fold) on your uploaded file…';
+      const fd = new FormData();
+      fd.append('file',       uploadedFile);
+      fd.append('label_col',  label_col);
+      fd.append('mitigation', mitigation);
+      fd.append('model_name', selectedModelUp);
+      fetch('/full_scan', { method:'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById('dash-loading').style.display='none';
+          document.getElementById('runBtn').disabled=false;
+          if (d.error) { alert('Error: '+d.error); return; }
+          renderFullScan(d);
+        })
+        .catch(e => {
+          document.getElementById('dash-loading').style.display='none';
+          document.getElementById('runBtn').disabled=false;
+          alert('Request failed: '+e);
+        });
+      return;
+    }
+
+    // ── Normal upload audit ──
+    document.getElementById('loaderTxt').textContent =
+      'Running audit on your uploaded file…';
+    const fd = new FormData();
+    fd.append('file',       uploadedFile);
+    fd.append('sensitive',  sensitive);
+    fd.append('label_col',  label_col);
+    fd.append('mitigation', mitigation);
+    fd.append('model_name', selectedModelUp);
+    fetch('/audit', { method:'POST', body: fd })
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('dash-loading').style.display='none';
+        document.getElementById('runBtn').disabled=false;
+        if (d.error) { alert('Error: '+d.error); return; }
+        renderResults(d);
+      })
+      .catch(e => {
+        document.getElementById('dash-loading').style.display='none';
+        document.getElementById('runBtn').disabled=false;
+        alert('Request failed: '+e);
+      });
+
+  } else {
+    const dataset    = document.getElementById('dsSel').value;
+    const sensitive  = document.getElementById('attrSel').value;
+    const mitigation = document.getElementById('critSel').value;
+
+    // ── Full Dataset Scan (demo) ──
+    if (sensitive === '__full_scan__') {
+      document.getElementById('loaderTxt').textContent =
+        'Running Full Dataset Scan (5-Fold K-Cross Validation) on ' + dataset + '…';
+      fetch('/full_scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataset, mitigation, model_name: selectedModel })
+      })
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('dash-loading').style.display='none';
+        document.getElementById('runBtn').disabled=false;
+        if (d.error) { alert('Error: '+d.error); return; }
+        renderFullScan(d);
+      })
+      .catch(e => {
+        document.getElementById('dash-loading').style.display='none';
+        document.getElementById('runBtn').disabled=false;
+        alert('Request failed: '+e);
+      });
+      return;
+    }
+
+    // ── Normal demo audit ──
+    document.getElementById('loaderTxt').textContent =
+      'Training ML models on ' + dataset + '…';
+    fetch('/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataset, sensitive, mitigation, model_name: selectedModel })
+    })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('dash-loading').style.display='none';
+      document.getElementById('runBtn').disabled=false;
+      if (d.error) { alert('Error: '+d.error); return; }
+      renderResults(d);
+    })
+    .catch(e => {
+      document.getElementById('dash-loading').style.display='none';
+      document.getElementById('runBtn').disabled=false;
+      alert('Request failed: '+e);
+    });
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER RESULTS
+   ══════════════════════════════════════════════════ */
+const TEAL='#028090', MINT='#02c39a', NAVY='#1a2a4a', AMBER='#f59e0b', RED='#ef4444';
+const CO = {
+  plugins:{ legend:{ labels:{ color:'#64748b', font:{ size:11 } } } },
+  scales:{
+    x:{ ticks:{ color:'#64748b', font:{size:10} }, grid:{ color:'#f0f4f8' } },
+    y:{ ticks:{ color:'#64748b', font:{size:10} }, grid:{ color:'#f0f4f8' } }
+  }
+};
+let cMod=null,cFair=null,cMit=null;
+
+function renderResults(d) {
+  _auditData = d;
+
+  // Restore static HTML structure if renderFullScan wiped it
+  const resultsDiv = document.getElementById('dash-results');
+  if (!document.getElementById('rDs')) {
+    resultsDiv.innerHTML = _staticResultsHTML;
+  }
+
+  // Summary
+  document.getElementById('rDs').textContent      = d.dataset;
+  document.getElementById('rAttr').textContent    = d.sensitive_attr;
+  document.getElementById('rModel').textContent   = d.model_name;
+  document.getElementById('rSamples').textContent = Number(d.n_samples).toLocaleString()+' / '+Number(d.n_test).toLocaleString();
+  document.getElementById('rAUC').textContent     = d.auc ? d.auc.toFixed(3) : '—';
+
+  const fs=d.fairness_score, v=document.getElementById('rVerdict');
+  if(fs>=75){v.className='sum-verdict sv-fair';     v.textContent='✓ FAIR';}
+  else if(fs>=50){v.className='sum-verdict sv-moderate';v.textContent='⚠ MODERATE BIAS';}
+  else{v.className='sum-verdict sv-bias';           v.textContent='✕ HIGH BIAS';}
+
+  // Model comparison cards
+  document.getElementById('mcGrid').innerHTML = d.models_comparison.map(m=>{
+    const fc = m.fairness_score>=75?'good':m.fairness_score>=50?'ok':'bad';
+    return `
+    <div class="mc-card ${m.active?'active':''}">
+      <h4>${m.name}</h4>
+      <div class="mc-row"><span class="mc-lbl">Accuracy</span><span class="mc-val">${(m.accuracy*100).toFixed(1)}%</span></div>
+      <div class="mc-row"><span class="mc-lbl">AUC-ROC</span><span class="mc-val">${(m.auc||m.accuracy).toFixed(3)}</span></div>
+      <div class="mc-row"><span class="mc-lbl">Fairness</span><span class="mc-val ${fc}">${m.fairness_score}/100</span></div>
+      <div class="mc-row"><span class="mc-lbl">Disp. Impact</span><span class="mc-val">${m.disparate_impact.toFixed(3)}</span></div>
+      <div class="mc-bar-wrap"><div class="mc-bar-fill" style="width:${m.fairness_score}%"></div></div>
+      <button class="mc-btn" onclick="rerunModel('${m.name}')">${m.active?'✓ Active':'Use This Model'}</button>
+    </div>`;
+  }).join('');
+
+  // Fairness tiles
+  const diOk = d.disparate_impact>=0.8 && d.disparate_impact<=1.2;
+  const eoV  = parseFloat((1-Math.abs(d.equalized_odds)).toFixed(2));
+  const ppV  = parseFloat((1-Math.abs(d.predictive_parity)).toFixed(2));
+  setTile('tDI','bDI','vDI', d.disparate_impact.toFixed(2), diOk?'good':'bad',  diOk?'t-good':'t-bad');
+  setTile('tEO','bEO','vEO', eoV.toFixed(2),                eoV>=0.8?'good':'bad', eoV>=0.8?'t-good':'t-bad');
+  setTile('tPP','bPP','vPP', ppV.toFixed(2),                ppV>=0.8?'good':'warn', ppV>=0.8?'t-good':'t-warn');
+  setTile('tAC','bAC','vAC', (d.accuracy*100).toFixed(1)+'%', d.accuracy>=0.75?'blue':'warn', d.accuracy>=0.75?'t-blue':'t-warn');
+
+  // Group table
+  document.getElementById('grpBody').innerHTML = d.group_labels.map((l,i)=>`
+    <tr>
+      <td>${l}</td>
+      <td>${(d.group_accuracy[i]*100).toFixed(1)}%</td>
+      <td>${(d.group_pos_rate[i]*100).toFixed(1)}%</td>
+      <td>${(d.group_tpr[i]*100).toFixed(1)}%</td>
+      <td>${(d.group_fpr[i]*100).toFixed(1)}%</td>
+      <td>${(d.group_fnr[i]*100).toFixed(1)}%</td>
+    </tr>`).join('');
+
+  const mc=d.models_comparison;
+  if(cMod)cMod.destroy();
+  cMod=new Chart(document.getElementById('cModels'),{type:'bar',
+    data:{labels:mc.map(m=>m.name),datasets:[{label:'Accuracy (%)',
+      data:mc.map(m=>(m.accuracy*100).toFixed(1)),
+      backgroundColor:mc.map(m=>m.active?TEAL+'cc':TEAL+'44'),
+      borderColor:mc.map(m=>m.active?TEAL:TEAL+'aa'),borderWidth:1.5,borderRadius:5}]},
+    options:{...CO,plugins:{...CO.plugins,legend:{display:false}},
+      scales:{...CO.scales,y:{...CO.scales.y,min:0,max:100,ticks:{...CO.scales.y.ticks,callback:v=>v+'%'}}}}});
+
+  if(cFair)cFair.destroy();
+  cFair=new Chart(document.getElementById('cFairness'),{type:'bar',
+    data:{labels:mc.map(m=>m.name),datasets:[{label:'Fairness Score',
+      data:mc.map(m=>m.fairness_score),
+      backgroundColor:mc.map(m=>m.fairness_score>=75?MINT+'cc':m.fairness_score>=50?AMBER+'cc':RED+'cc'),
+      borderColor:mc.map(m=>m.fairness_score>=75?MINT:m.fairness_score>=50?AMBER:RED),
+      borderWidth:1.5,borderRadius:5}]},
+    options:{...CO,plugins:{...CO.plugins,legend:{display:false}},
+      scales:{...CO.scales,y:{...CO.scales.y,min:0,max:100}}}});
+
+  // Mitigation chart
+  if(cMit)cMit.destroy();
+  cMit=new Chart(document.getElementById('cMit'),{type:'bar',
+    data:{labels:['Accuracy','Dem.Parity(inv)','Eq.Odds(inv)','Fairness/100'],
+      datasets:[
+        {label:'Before',data:[d.accuracy,1-Math.abs(d.demographic_parity),1-Math.abs(d.equalized_odds),d.fairness_score/100],
+          backgroundColor:'#94a3b888',borderColor:'#94a3b8',borderWidth:1.5,borderRadius:5},
+        {label:'After', data:[d.mitigated_accuracy,1-Math.abs(d.mitigated_dem_parity),1-Math.abs(d.mitigated_eq_odds),d.mitigated_fairness/100],
+          backgroundColor:TEAL+'88',borderColor:TEAL,borderWidth:1.5,borderRadius:5}]},
+    options:{...CO,scales:{...CO.scales,y:{...CO.scales.y,max:1,ticks:{...CO.scales.y.ticks,callback:v=>(v*100).toFixed(0)+'%'}}}}});
+
+  // Mitigation table
+  const rows=[
+    ['Accuracy',         d.accuracy,                   d.mitigated_accuracy,               true ],
+    ['Dem. Parity Diff', Math.abs(d.demographic_parity),Math.abs(d.mitigated_dem_parity),  false],
+    ['Eq. Odds Diff',    Math.abs(d.equalized_odds),   Math.abs(d.mitigated_eq_odds),      false],
+    ['Disparate Impact', d.disparate_impact,           d.mitigated_disparate_impact,        null ],
+    ['Fairness Score',   d.fairness_score/100,         d.mitigated_fairness/100,            true ],
+  ];
+  document.getElementById('mitBody').innerHTML=rows.map(([lbl,bef,aft,hib])=>{
+    const ok=hib===null?Math.abs(1-aft)<Math.abs(1-bef):hib?aft>bef:aft<bef;
+    const delta=((aft-bef)*100).toFixed(2);
+    return`<tr><td>${lbl}</td><td>${(bef*100).toFixed(2)}%</td><td>${(aft*100).toFixed(2)}%</td>
+      <td class="${ok?'improved':'worsened'}">${ok?'▲':'▼'} ${Math.abs(delta)}%</td></tr>`;
+  }).join('');
+
+  document.getElementById('dash-results').style.display='block';
+  document.getElementById('exportBtn').style.display='flex';
+  document.getElementById('dash-results').scrollIntoView({behavior:'smooth',block:'start'});
+  renderXAI(d);
+}
+
+function setTile(tid,bid,vid,val,badge,tclass){
+  document.getElementById(tid).className='m-tile '+tclass;
+  const b=document.getElementById(bid); b.className='m-badge '+badge; b.textContent=badge.toUpperCase();
+  document.getElementById(vid).textContent=val;
+}
+
+function rerunModel(name){
+  const isUpload = document.getElementById('tabUpload').classList.contains('active');
+
+  // Update demo pills
+  document.querySelectorAll('#demoPills .model-pill').forEach(b=>{
+    const m=b.textContent.trim()===name;
+    b.classList.toggle('active',m);
+    if(m) selectedModel=name;
+  });
+
+  // Update upload pills too
+  document.querySelectorAll('#uploadPills .model-pill').forEach(b=>{
+    const m=b.textContent.trim()===name;
+    b.classList.toggle('active',m);
+    if(m) selectedModelUp=name;
+  });
+
+  // Re-run audit in the correct mode (demo or upload)
+  doAudit();
+}
+
+/* ══════════════════════════════════════════════════
+   GENERATE PLAIN-ENGLISH REPORT
+   ══════════════════════════════════════════════════ */
+function genReport(){
+  const d=_auditData; if(!d){alert('Run an audit first.');return;}
+  const fs=d.fairness_score;
+  const vc=fs>=75?'#059669':fs>=50?'#d97706':'#dc2626';
+  const verdict=fs>=75?'FAIR':fs>=50?'MODERATE BIAS':'HIGH BIAS';
+  const rb=document.getElementById('reportBody');
+  rb.innerHTML=`<div class="rep-content">
+<strong>━━ FAIRNESS AUDIT REPORT ━━</strong><br>
+<span style="color:#94a3b8;font-size:.78rem;">Generated: ${new Date().toUTCString()}</span><br><br>
+<strong>EXECUTIVE SUMMARY</strong><br>
+The <em>${d.dataset}</em> dataset was audited for bias on the <em>${d.sensitive_attr}</em> attribute
+using <em>${d.model_name}</em>. Verdict:
+<strong style="color:${vc}">${verdict}</strong> — Score: <strong>${d.fairness_score}/100</strong><br><br>
+<strong>KEY FINDINGS</strong><br>
+• Accuracy: <strong>${(d.accuracy*100).toFixed(1)}%</strong> on ${Number(d.n_test).toLocaleString()} test samples (AUC: ${d.auc?.toFixed(3)||'N/A'})<br>
+• Disparate Impact: <strong>${d.disparate_impact.toFixed(3)}</strong> — ${d.disparate_impact>=0.8&&d.disparate_impact<=1.2?'✅ Within 0.80–1.20 range':'⚠️ Outside threshold — potential discrimination'}<br>
+• Dem. Parity Diff: <strong>${d.demographic_parity.toFixed(3)}</strong> — ${Math.abs(d.demographic_parity)<0.05?'✅ Acceptable':'⚠️ Significant group disparity'}<br>
+• Equalized Odds Diff: <strong>${d.equalized_odds.toFixed(3)}</strong> — ${Math.abs(d.equalized_odds)<0.05?'✅ Acceptable':'⚠️ TPR gap between groups'}<br><br>
+<strong>GROUP DISPARITY</strong><br>
+${d.group_labels.map((l,i)=>`• <strong>${l}</strong>: Accuracy ${(d.group_accuracy[i]*100).toFixed(1)}% | Positive Rate ${(d.group_pos_rate[i]*100).toFixed(1)}% | FPR ${(d.group_fpr[i]*100).toFixed(1)}%`).join('<br>')}<br><br>
+<strong>ALL 4 MODELS</strong><br>
+${d.models_comparison.map(m=>`• <strong>${m.name}</strong>: Acc ${(m.accuracy*100).toFixed(1)}%, Fairness ${m.fairness_score}/100, DI ${m.disparate_impact.toFixed(3)}`).join('<br>')}<br><br>
+<strong>TOP FEATURES</strong><br>
+${d.top_features.slice(0,4).map((f,i)=>`${i+1}. <strong>${f.name}</strong> — ${(f.shap*100).toFixed(1)}% importance`).join('<br>')}<br><br>
+<strong>MITIGATION</strong><br>
+Fairness improved: <strong>${d.fairness_score}</strong> → <strong style="color:#059669">${d.mitigated_fairness}</strong> (+${(d.mitigated_fairness-d.fairness_score).toFixed(1)} pts)<br><br>
+<strong>RECOMMENDATIONS</strong><br>
+${fs<75?`• ⚠ Bias mitigation required before production deployment<br>• Review training data for ${d.sensitive_attr} inequalities<br>`:'• ✅ Model meets minimum fairness thresholds<br>'}
+• Schedule quarterly re-audits to monitor fairness drift<br>
+• Align with EU AI Act and UN SDG 10 (Reduced Inequalities)
+</div>`;
+  rb.classList.add('filled');
+}
+
+/* ══════════════════════════════════════════════════
+   FIX 7 — Export as real PDF
+   ══════════════════════════════════════════════════ */
+function doExportPDF(){
+  const d=_auditData; if(!d){alert('Run an audit first.');return;}
+  document.getElementById('pdfSpinner').classList.add('show');
+
+  fetch('/export_pdf',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(d)
+  })
+  .then(r=>{
+    if(!r.ok) throw new Error('PDF generation failed');
+    return r.blob();
+  })
+  .then(blob=>{
+    document.getElementById('pdfSpinner').classList.remove('show');
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = `fairness_audit_${(d.dataset||'report').replace(/ /g,'_')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  })
+  .catch(e=>{
+    document.getElementById('pdfSpinner').classList.remove('show');
+    alert('PDF export failed: '+e);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   RESET
+   ══════════════════════════════════════════════════ */
+/* renderFullScan */
+function renderFullScan(d) {
+  _auditData = d;
+  const vc = d.overall_verdict==='FAIR'?'#059669':d.overall_verdict==='MODERATE'?'#d97706':'#dc2626';
+  const vcClass = d.overall_verdict==='FAIR'?'sv-fair':d.overall_verdict==='MODERATE'?'sv-moderate':'sv-bias';
+  const verdictIcon = d.overall_verdict==='FAIR'?'✓ FAIR':d.overall_verdict==='MODERATE'?'⚠ MODERATE':'✕ HIGH BIAS';
+
+  const foldBars = (d.fold_accuracies||[]).map((a,i)=>
+    '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;">'+
+    '<span style="min-width:50px;font-size:.78rem;color:var(--mid);">Fold '+(i+1)+'</span>'+
+    '<div style="flex:1;height:10px;background:var(--silver);border-radius:5px;overflow:hidden;">'+
+    '<div style="height:100%;width:'+(a*100).toFixed(0)+'%;background:var(--teal);border-radius:5px;"></div></div>'+
+    '<span style="font-size:.78rem;font-weight:700;color:var(--navy);min-width:45px;">'+(a*100).toFixed(1)+'%</span></div>'
+  ).join('');
+
+  const attrRows = (d.attr_results||[]).map(a=>{
+    const c=a.bias_level==='FAIR'?'#059669':a.bias_level==='MODERATE'?'#d97706':'#dc2626';
+    const bg=a.bias_level==='FAIR'?'#f0fdf4':a.bias_level==='MODERATE'?'#fffbeb':'#fef2f2';
+    return '<tr style="background:'+bg+'">'+
+      '<td style="font-weight:700;color:var(--navy);padding:.6rem .8rem;border:1px solid #f0f4f8;">'+a.attribute+'</td>'+
+      '<td style="text-align:center;padding:.6rem .8rem;border:1px solid #f0f4f8;">'+a.fairness_score+'/100</td>'+
+      '<td style="text-align:center;padding:.6rem .8rem;border:1px solid #f0f4f8;">'+(a.disparate_impact?a.disparate_impact.toFixed(3):'—')+'</td>'+
+      '<td style="text-align:center;padding:.6rem .8rem;border:1px solid #f0f4f8;">'+(a.group_labels?a.group_labels[0]:'—')+'</td>'+
+      '<td style="text-align:center;padding:.6rem .8rem;border:1px solid #f0f4f8;">'+(a.group_labels?a.group_labels[1]:'—')+'</td>'+
+      '<td style="text-align:center;padding:.6rem .8rem;border:1px solid #f0f4f8;"><span style="font-weight:800;color:'+c+';">'+a.bias_level+'</span></td></tr>';
+  }).join('');
+
+  const html =
+    '<div class="sum-bar" style="margin-bottom:1rem;">'+
+    '<div class="sum-item"><label>Dataset</label><span>'+d.dataset+'</span></div>'+
+    '<div class="sum-item"><label>Model</label><span>'+d.model_name+'</span></div>'+
+    '<div class="sum-item"><label>Total Samples</label><span>'+Number(d.n_samples).toLocaleString()+'</span></div>'+
+    '<div class="sum-item"><label>K-Folds</label><span>'+d.n_folds+'-Fold CV</span></div>'+
+    '<div class="sum-item"><label>Overall Accuracy</label><span class="acc">'+(d.overall_accuracy*100).toFixed(2)+'% ± '+(d.accuracy_std*100).toFixed(2)+'%</span></div>'+
+    '<div class="sum-item"><label>Avg Fairness</label><span class="acc">'+d.avg_fairness+'/100</span></div>'+
+    '<div class="sum-verdict '+vcClass+'">'+verdictIcon+'</div></div>'+
+
+    '<div class="sec-head"><span class="sec-num">03</span> Overall Accuracy — 5-Fold Cross Validation</div>'+
+    '<div class="two-col" style="margin-bottom:1rem;">'+
+    '<div class="wcard"><h4>📊 Accuracy Per Fold (ALL '+Number(d.n_samples).toLocaleString()+' rows tested)</h4>'+
+    foldBars+
+    '<div style="margin-top:.8rem;padding:.7rem;background:var(--offwhite);border-radius:6px;font-size:.85rem;">'+
+    '<strong>Overall Accuracy: '+(d.overall_accuracy*100).toFixed(2)+'%</strong> &nbsp;|&nbsp; '+
+    'Std Dev: ±'+(d.accuracy_std*100).toFixed(2)+'% &nbsp;|&nbsp; AUC: '+(d.overall_auc?d.overall_auc.toFixed(3):'—')+'</div></div>'+
+
+    '<div class="wcard"><h4>🎯 Average Fairness Score</h4>'+
+    '<div style="display:flex;align-items:center;justify-content:center;flex-direction:column;padding:1.5rem 0;">'+
+    '<div style="font-size:4rem;font-weight:800;color:'+vc+';">'+d.avg_fairness+'</div>'+
+    '<div style="font-size:1rem;color:var(--mid);">/100 Average Fairness</div>'+
+    '<div style="margin-top:.8rem;font-size:.85rem;font-weight:700;color:'+vc+';">'+d.overall_verdict+'</div>'+
+    '</div></div></div>'+
+
+    '<div class="sec-head"><span class="sec-num">04</span> Fairness Scan — All Attributes</div>'+
+    '<div class="wcard" style="margin-bottom:1rem;"><h4>⚖️ Per-Attribute Bias Analysis</h4>'+
+    '<table class="data-table"><thead><tr>'+
+    '<th>Attribute</th><th>Fairness Score</th><th>Disparate Impact</th>'+
+    '<th>Group 0</th><th>Group 1</th><th>Bias Level</th></tr></thead>'+
+    '<tbody>'+attrRows+'</tbody></table></div>'+
+
+    '<div class="sec-head"><span class="sec-num">05</span> What This Means</div>'+
+    '<div class="wcard" style="margin-bottom:1rem;font-size:.88rem;color:var(--slate);line-height:1.9;">'+
+    '<strong>Full Dataset Scan</strong> uses 5-Fold Cross Validation — every single row in the dataset was used for testing at least once.<br>'+
+    '• <strong>Overall Accuracy</strong> = true performance on the complete dataset (not just 25%)<br>'+
+    '• <strong>Std Dev ±</strong> = how consistent the model is across different data splits (lower = more stable)<br>'+
+    '• <strong>Per-Attribute Fairness</strong> = bias level when each column is treated as the sensitive attribute<br>'+
+    '• 🟢 <strong>FAIR</strong> = Fairness Score ≥ 75 &nbsp;|&nbsp; 🟡 <strong>MODERATE</strong> = 50–74 &nbsp;|&nbsp; 🔴 <strong>HIGH BIAS</strong> = below 50'+
+    '</div>'+
+
+    // ── Section 06: Feature Importance ──
+    (d.top_features && d.top_features.length ?
+      '<div class="sec-head"><span class="sec-num">06</span> Feature Importance (SHAP)</div>'+
+      '<div class="wcard" style="margin-bottom:1rem;">'+
+      '<h4>🔬 Top Predictive Features</h4>'+
+      '<div id="fdsFeatDiv" style="margin-top:.8rem;"></div>'+
+      '</div>'
+    : '')+
+
+    // ── Section 07: Bias Mitigation ──
+    (d.mitigated_accuracy !== undefined ?
+      '<div class="sec-head"><span class="sec-num">07</span> Bias Mitigation Results</div>'+
+      '<div class="two-col" style="margin-bottom:1rem;">'+
+        '<div class="wcard"><h4>📊 Before vs After Mitigation</h4>'+
+        '<canvas id="fdsMitCanvas" height="220"></canvas></div>'+
+        '<div class="wcard"><h4>📋 Detailed Comparison</h4>'+
+        '<table class="data-table"><thead><tr>'+
+        '<th>Metric</th><th>Before</th><th>After</th><th>Δ Change</th>'+
+        '</tr></thead><tbody id="fdsMitBody"></tbody></table></div>'+
+      '</div>'
+    : '')+
+
+    // ── Section 08: XAI ──
+    (d.xai && Object.keys(d.xai).length ?
+      '<div id="fdsXaiWrapper"></div>'
+    : '');
+
+  const resultsDiv = document.getElementById('dash-results');
+  resultsDiv.innerHTML = html;
+  resultsDiv.style.display = 'block';
+  const expBtn = document.getElementById('exportBtn');
+  if (expBtn) expBtn.style.display = 'flex';
+  resultsDiv.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // ── Render Section 07: Feature Importance ──
+  if (d.top_features && d.top_features.length) {
+    const featDiv = document.getElementById('fdsFeatDiv');
+    if (featDiv) {
+      const maxV = Math.max(...d.top_features.map(f => f.shap||0), 0.001);
+      featDiv.innerHTML = d.top_features.slice(0,8).map(f => {
+        const pct  = f.shap_pct || Math.round((f.shap/maxV)*100);
+        const val  = f.shap_pct ? f.shap_pct+'%' : (f.shap*100).toFixed(1)+'%';
+        const sign = (f.shap_signed !== undefined) ? f.shap_signed : f.shap;
+        const bc   = sign >= 0 ? 'linear-gradient(90deg,var(--teal),var(--mint))' : 'linear-gradient(90deg,#dc2626,#f87171)';
+        return '<div class="feat-row">'+
+          '<span class="feat-name">'+f.name+'</span>'+
+          '<div class="feat-bar-wrap"><div class="feat-bar" style="width:0%;background:'+bc+'" data-w="'+pct+'%"></div></div>'+
+          '<span class="feat-val">'+val+'</span></div>';
+      }).join('');
+      setTimeout(()=>featDiv.querySelectorAll('.feat-bar').forEach(b=>b.style.width=b.dataset.w), 150);
+    }
+  }
+
+  // ── Render Section 08: Mitigation ──
+  if (d.mitigated_accuracy !== undefined) {
+    const mitBody = document.getElementById('fdsMitBody');
+    if (mitBody) {
+      const rows = [
+        ['Accuracy',         d.accuracy||0,                       d.mitigated_accuracy||0,           true ],
+        ['Dem. Parity Diff', Math.abs(d.demographic_parity||0),   Math.abs(d.mitigated_dem_parity||0), false],
+        ['Eq. Odds Diff',    Math.abs(d.equalized_odds||0),       Math.abs(d.mitigated_eq_odds||0),    false],
+        ['Disparate Impact', d.disparate_impact||0,               d.mitigated_disparate_impact||0,     null ],
+        ['Fairness Score',   (d.fairness_score||0)/100,           (d.mitigated_fairness||0)/100,       true ],
+      ];
+      mitBody.innerHTML = rows.map(([lbl,bef,aft,hi]) => {
+        const ok = hi===null ? (Math.abs(1-aft)<Math.abs(1-bef)) : (hi ? aft>bef : aft<bef);
+        const delta = ((aft-bef)*100).toFixed(2);
+        const col = ok ? '#059669' : '#dc2626';
+        return '<tr><td style="font-weight:600;">'+lbl+'</td>'+
+          '<td style="text-align:center;">'+(bef*100).toFixed(2)+'%</td>'+
+          '<td style="text-align:center;">'+(aft*100).toFixed(2)+'%</td>'+
+          '<td style="text-align:center;font-weight:700;color:'+col+';">'+(parseFloat(delta)>0?'▲':'▼')+' '+Math.abs(parseFloat(delta)).toFixed(2)+'%</td></tr>';
+      }).join('');
+    }
+    const ctx = document.getElementById('fdsMitCanvas');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Accuracy','Dem.Parity(inv)','Eq.Odds(inv)','Fairness/100'],
+          datasets: [
+            {label:'Before', data:[d.accuracy||0, 1-Math.abs(d.demographic_parity||0), 1-Math.abs(d.equalized_odds||0), (d.fairness_score||0)/100], backgroundColor:'#cbd5e1'},
+            {label:'After',  data:[d.mitigated_accuracy||0, 1-Math.abs(d.mitigated_dem_parity||0), 1-Math.abs(d.mitigated_eq_odds||0), (d.mitigated_fairness||0)/100], backgroundColor:'#028090'},
+          ]
+        },
+        options:{responsive:true,scales:{y:{beginAtZero:true,max:1,ticks:{callback:v=>Math.round(v*100)+'%'}}},plugins:{legend:{position:'top'}}}
+      });
+    }
+  }
+
+  // ── Render Section 09: XAI ──
+  if (d.xai && Object.keys(d.xai).length) {
+    renderXAIInto('fdsXaiWrapper', d);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   EXPLAINABLE AI RENDERER
+   ══════════════════════════════════════════════════ */
+/* renderXAIInto — renders XAI into any container (used by Full Scan) */
+function renderXAIInto(containerId, d) {
+  const x = d.xai; if (!x) return;
+  const wrapper = document.getElementById(containerId); if (!wrapper) return;
+
+  wrapper.innerHTML =
+    '<div class="sec-head"><span class="sec-num">08</span> Explainable AI</div>'+
+    '<div class="wcard" style="margin-bottom:1rem;">'+
+      '<h4>🔬 SHAP Values <span style="font-size:.75rem;font-weight:400;color:var(--mid);">(Kernel SHAP — global feature importance)</span></h4>'+
+      '<div id="'+containerId+'Shap" style="margin-top:.8rem;"></div>'+
+    '</div>'+
+    '<div class="wcard" style="margin-bottom:1rem;">'+
+      '<h4>🧪 LIME Explanation <span style="font-size:.75rem;font-weight:400;color:var(--mid);">(local single-prediction explanation)</span></h4>'+
+      '<div id="'+containerId+'Lime" style="margin-top:.8rem;"></div>'+
+    '</div>'+
+    '<div class="wcard" style="margin-bottom:1rem;">'+
+      '<h4>📋 Plain-English Decision Explanation</h4>'+
+      '<div id="'+containerId+'Exp"></div>'+
+    '</div>';
+
+  // SHAP bars
+  const sd=document.getElementById(containerId+'Shap');
+  if(sd&&x.feat_contributions){
+    const mv=Math.max(...x.feat_contributions.map(f=>f.value),0.001);
+    const bl=x.shap_baseline?(x.shap_baseline*100).toFixed(1):'—';
+    let sh='<div style="font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">📌 Baseline: <strong>'+bl+'%</strong> &nbsp;|&nbsp; <span style="color:#059669;">█ positive</span> <span style="color:#dc2626;">█ negative</span> &nbsp;|&nbsp; <em>Kernel SHAP</em></div>';
+    sh+=x.feat_contributions.map(f=>{
+      let pw=Math.round((f.value/mv)*100);
+      let ip=f.shap_signed>=0;
+      let pb=ip?'linear-gradient(90deg,#059669,#02c39a)':'linear-gradient(90deg,#dc2626,#f87171)';
+      let sv=(f.shap_signed>=0?'+':'')+f.shap_signed.toFixed(4);
+      return '<div class="xai-feat-row">'+
+        '<div class="xai-feat-name">'+f.name+'</div>'+
+        '<div class="xai-feat-bar-wrap"><div class="xai-feat-bar" style="width:0%;background:'+pb+'" data-w="'+pw+'%"></div></div>'+
+        '<div class="xai-feat-pct">'+f.pct+'%</div>'+
+        '<div style="min-width:65px;font-size:.75rem;font-weight:700;color:'+(ip?'#059669':'#dc2626')+';">'+sv+'</div>'+
+        (ip?'<span class="xai-feat-tag pos">▲ POS</span>':'<span class="xai-feat-tag neg">▼ NEG</span>')+'</div>';
+    }).join('');
+    sd.innerHTML=sh;
+    setTimeout(()=>sd.querySelectorAll('.xai-feat-bar').forEach(b=>b.style.width=b.dataset.w),150);
+  }
+
+  // LIME bars
+  const ld=document.getElementById(containerId+'Lime');
+  if(ld&&x.lime){
+    const L=x.lime;
+    const pc=(L.prediction*100).toFixed(1);
+    const lc=L.prediction>=0.5?'#059669':'#dc2626';
+    const ll=L.prediction>=0.5?'POSITIVE / APPROVED':'NEGATIVE / DENIED';
+    const ml=Math.max(...L.features.map(f=>f.abs),0.001);
+    let lh='<div style="font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">🎯 Sample #1: <strong style="color:'+lc+';">'+pc+'% → '+ll+'</strong> &nbsp;|&nbsp; <em>LIME ('+L.n_samples+' samples)</em></div>';
+    lh+=L.features.map(f=>{
+      let lw=Math.round((f.abs/ml)*100);
+      let li=f.direction==='positive';
+      let lb=li?'linear-gradient(90deg,#059669,#02c39a)':'linear-gradient(90deg,#dc2626,#f87171)';
+      let ls=(f.contribution>=0?'+':'')+f.contribution.toFixed(4);
+      return '<div class="xai-feat-row">'+
+        '<div class="xai-feat-name">'+f.feature+'</div>'+
+        '<div style="font-size:.72rem;color:var(--mid);min-width:55px;">val='+f.value+'</div>'+
+        '<div class="xai-feat-bar-wrap"><div class="xai-feat-bar" style="width:0%;background:'+lb+'" data-w="'+lw+'%"></div></div>'+
+        '<div class="xai-feat-pct">'+f.pct+'%</div>'+
+        '<div style="min-width:65px;font-size:.75rem;font-weight:700;color:'+(li?'#059669':'#dc2626')+';">'+ls+'</div>'+
+        (li?'<span class="xai-feat-tag pos">↑ FOR</span>':'<span class="xai-feat-tag neg">↓ AGAINST</span>')+'</div>';
+    }).join('');
+    ld.innerHTML=lh;
+    setTimeout(()=>ld.querySelectorAll('.xai-feat-bar').forEach(b=>b.style.width=b.dataset.w),200);
+  } else if(ld){
+    ld.innerHTML='<div style="color:var(--mid);font-size:.85rem;">LIME not available.</div>';
+  }
+
+
+
+  // Plain-English
+  const ed=document.getElementById(containerId+'Exp');
+  if(ed&&x.explanation){
+    const e=x.explanation;
+    ed.innerHTML=[['🧠 Summary',e.summary],['⚙️ How The Model Works',e.how_it_works],
+      ['⚠️ Why Bias Exists',e.why_biased],['💡 What To Do',e.what_to_do]]
+    .map(([l,t])=>'<div class="xai-exp-block"><div class="xai-exp-label">'+l+'</div><div class="xai-exp-text">'+t+'</div></div>').join('');
+  }
+}
+
+function renderXAI(d) {
+  const x = d.xai;
+  if (!x) return;
+
+  document.getElementById('xaiSection').style.display = 'block';
+  document.getElementById('xaiPlaceholder').style.display = 'none';
+
+  // ── 3. Real SHAP Feature Contributions ──
+  const fcDiv = document.getElementById('xaiFeatChart');
+  if (fcDiv && x.feat_contributions) {
+    const maxV = Math.max(...x.feat_contributions.map(f => f.value), 0.001);
+    const baseline = x.shap_baseline ? (x.shap_baseline * 100).toFixed(1) : '—';
+
+    let html = '<div style="font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">'+
+      '📌 Baseline prediction (expected value): <strong>'+baseline+'%</strong> &nbsp;|&nbsp; '+
+      '<span style="color:#059669;">█ positive impact</span> &nbsp;'+
+      '<span style="color:#dc2626;">█ negative impact</span>'+
+      ' &nbsp;|&nbsp; <em>Method: Kernel SHAP (Shapley values)</em></div>';
+
+    html += x.feat_contributions.map(f => {
+      const w   = Math.round((f.value / maxV) * 100);
+      const isPos = f.shap_signed >= 0;
+      const barCol = isPos ? 'linear-gradient(90deg,#059669,#02c39a)' : 'linear-gradient(90deg,#dc2626,#f87171)';
+      const tag = isPos
+        ? '<span class="xai-feat-tag pos">▲ POSITIVE</span>'
+        : '<span class="xai-feat-tag neg">▼ NEGATIVE</span>';
+      const signedVal = (f.shap_signed >= 0 ? '+' : '') + f.shap_signed.toFixed(4);
+      return '<div class="xai-feat-row">'+
+        '<div class="xai-feat-name" title="'+f.name+'">'+f.name+'</div>'+
+        '<div class="xai-feat-bar-wrap"><div class="xai-feat-bar" style="width:0%;background:'+barCol+'" data-w="'+w+'%"></div></div>'+
+        '<div class="xai-feat-pct">'+f.pct+'%</div>'+
+        '<div style="min-width:65px;font-size:.75rem;font-weight:700;color:'+(isPos?'#059669':'#dc2626')+';">'+signedVal+'</div>'+
+        tag+'</div>';
+    }).join('');
+    fcDiv.innerHTML = html;
+    setTimeout(() => {
+      fcDiv.querySelectorAll('.xai-feat-bar').forEach(b => b.style.width = b.dataset.w);
+    }, 150);
+  }
+
+  // ── 3b. Real LIME Local Explanation ──
+  const limeDiv = document.getElementById('xaiLimeChart');
+  if (limeDiv && x.lime) {
+    const L = x.lime;
+    const predPct = (L.prediction * 100).toFixed(1);
+    const predCol = L.prediction >= 0.5 ? '#059669' : '#dc2626';
+    const predLabel = L.prediction >= 0.5 ? 'POSITIVE / APPROVED' : 'NEGATIVE / DENIED';
+    const maxLime = Math.max(...L.features.map(f => f.abs), 0.001);
+
+    let lhtml = '<div style="font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">'+
+      '🎯 Local prediction for sample #1: <strong style="color:'+predCol+';">'+predPct+'% → '+predLabel+'</strong>'+
+      ' &nbsp;|&nbsp; <em>Method: LIME (weighted Ridge regression, '+L.n_samples+' perturbed samples)</em></div>';
+
+    lhtml += L.features.map(f => {
+      const w   = Math.round((f.abs / maxLime) * 100);
+      const isPos = f.direction === 'positive';
+      const barCol = isPos ? 'linear-gradient(90deg,#059669,#02c39a)' : 'linear-gradient(90deg,#dc2626,#f87171)';
+      const signedVal = (f.contribution >= 0 ? '+' : '') + f.contribution.toFixed(4);
+      const tag = isPos
+        ? '<span class="xai-feat-tag pos">↑ FOR</span>'
+        : '<span class="xai-feat-tag neg">↓ AGAINST</span>';
+      return '<div class="xai-feat-row">'+
+        '<div class="xai-feat-name" title="'+f.feature+'">'+f.feature+'</div>'+
+        '<div style="font-size:.72rem;color:var(--mid);min-width:55px;">val='+f.value+'</div>'+
+        '<div class="xai-feat-bar-wrap"><div class="xai-feat-bar" style="width:0%;background:'+barCol+'" data-w="'+w+'%"></div></div>'+
+        '<div class="xai-feat-pct">'+f.pct+'%</div>'+
+        '<div style="min-width:65px;font-size:.75rem;font-weight:700;color:'+(isPos?'#059669':'#dc2626')+';">'+signedVal+'</div>'+
+        tag+'</div>';
+    }).join('');
+    limeDiv.innerHTML = lhtml;
+    setTimeout(() => {
+      limeDiv.querySelectorAll('.xai-feat-bar').forEach(b => b.style.width = b.dataset.w);
+    }, 200);
+  } else if (limeDiv) {
+    limeDiv.innerHTML = '<div style="color:var(--mid);font-size:.85rem;">LIME explanation not available for this model.</div>';
+  }
+
+  // ── 6. Plain-English Explanation ──
+  const expDiv = document.getElementById('xaiExplanation');
+  if (expDiv && x.explanation) {
+    const e = x.explanation;
+    expDiv.innerHTML = [
+      ['🧠 Summary',            e.summary],
+      ['⚙️ How The Model Works', e.how_it_works],
+      ['⚠️ Why Bias Exists',    e.why_biased],
+      ['💡 What To Do',         e.what_to_do],
+    ].map(([label, text]) =>
+      '<div class="xai-exp-block">'+
+      '<div class="xai-exp-label">'+label+'</div>'+
+      '<div class="xai-exp-text">'+text+'</div>'+
+      '</div>'
+    ).join('');
+  }
+
+
+}
+
+function doReset(){
+  const rd = document.getElementById('dash-results');
+  rd.innerHTML = _staticResultsHTML;
+  rd.style.display='none';
+  document.getElementById('exportBtn').style.display='none';
+  _auditData=null;
+  const xais = document.getElementById('xaiSection');
+  const xaip = document.getElementById('xaiPlaceholder');
+  if(xais) xais.style.display='none';
+  if(xaip) xaip.style.display='block';
+}
+function resetReport(){
+  const rb=document.getElementById('reportBody');
+  rb.innerHTML=`<div class="rep-icon">📋</div>
+    <p class="rep-hint">Click <strong>Generate Report</strong> to create a plain-English audit narrative.</p>
+    <p class="rep-sub">Includes regulatory analysis, disparity breakdowns, and specific recommendations.</p>`;
+  rb.classList.remove('filled');
+}
+</script>
+{% endblock %}
